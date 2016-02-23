@@ -294,53 +294,50 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
         "Public Property Get ()\nEnd Property\n\n")
   "*List of function templates though which `vb6-new-sub' cycles.")
 
-(defvar visual-basic-imenu-generic-expression
-  `((nil ,(rx (* (syntax whitespace))
-              (? (| "public" "private")
-                 (+ (syntax whitespace)))
-              (? "declare"
-                 (+ (syntax whitespace)))
-              (| "sub" "function")
-              (+ (syntax whitespace))
-              (group (+ (| (syntax symbol) (syntax word)))
+(defvar vb6-regexes
+  `((function . ,(rx (* (syntax whitespace))
+                     (? (| "public" "private")
+                        (+ (syntax whitespace)))
+                     (? "declare"
+                        (+ (syntax whitespace)))
+                     (| "sub" "function")
+                     (+ (syntax whitespace))
+                     (group (+ (| (syntax symbol) (syntax word))))
                      (? (* (syntax whitespace))
-                        "(" (* anything) ")")
+                        "(" (*? anything) ")")
                      (? (+ (syntax whitespace))
                         "as"
                         (+ (syntax whitespace))
-                        (+ (syntax word)))))
-         1)
-    ("Constants" ,(rx (* (syntax whitespace))
-                      (? (or "private" "public" "global")
-                         (+ (syntax whitespace)))
-                      "const"
-                      (+ (syntax whitespace))
-                      (group (+ (or (syntax symbol) (syntax word)))
-                             word-end
-                             (* (syntax whitespace))
-                             "="
-                             (* (syntax whitespace))
-                             (+? anything))
-                      (or line-end (syntax comment-start)))
-     1)
-    ("Variables" ,(rx (* (syntax whitespace))
-                      (+ (or "public" "private" "global" "dim"))
-                      (+ (syntax whitespace))
-                      (group (+ (or (syntax symbol) (syntax word)))
-                             word-end
-                             (+ (syntax whitespace))
-                             "as"
-                             (+ (syntax whitespace))
-                             (+ (or (syntax symbol) (syntax word)))
-                             word-end))
-     1)
-    ("Types" ,(rx (? "public" (+ (syntax whitespace)))
-                  "type"
+                        (+ (syntax word)))
+                     line-end))
+    (constant . ,(rx (* (syntax whitespace))
+                     (? (or "private" "public" "global")
+                        (+ (syntax whitespace)))
+                     "const"
+                     (+ (syntax whitespace))
+                     (group (+ (or (syntax symbol) (syntax word))))
+                     word-end
+                     (* (syntax whitespace))
+                     "="
+                     (* (syntax whitespace))
+                     (+? anything)
+                     (or line-end (syntax comment-start))))
+    (variable . ,(rx line-start
+                     (+ (or "public" "private" "global" "dim"))
+                     (+ (syntax whitespace))
+                     (group (+ (or (syntax symbol) (syntax word))))
+                     word-end
+                     (+ (syntax whitespace))
+                     "as"
+                     (+ (syntax whitespace))
+                     (+ (or (syntax symbol) (syntax word)))
+                     word-end))
+    (type .  ,(rx line-start (? "public" (+ (syntax whitespace)))
+                  word-start "type" word-end
                   (+ (syntax whitespace))
-                  (group (+ (or (syntax symbol) (syntax word)))))
-     1)))
+                  (group (+ (or (syntax symbol) (syntax word))))))))
 
-(defvar visual-basic-mode-syntax-table
+(defvar vb6-mode-syntax-table
   (let ((s (make-syntax-table)))
     (mapc (lambda (p) (modify-syntax-entry (car p) (cdr p) s))
           '((?\' . "\<") ; Comment starter
@@ -360,32 +357,32 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
             (?\> . ".")))
     s))
 
-(defvar visual-basic-mode-map
+(defvar vb6-mode-map
   (let ((m (make-sparse-keymap)))
-    (define-key m (kbd "\t")      #'visual-basic-indent-line)
-    (define-key m (kbd "RET")     #'visual-basic-newline-and-indent)
-    (define-key m (kbd "M-RET")   #'visual-basic-insert-item)
-    (define-key m (kbd "C-c C-j") #'visual-basic-insert-item)
-    (define-key m (kbd "M-C-a")   #'visual-basic-beginning-of-defun)
-    (define-key m (kbd "M-C-e")   #'visual-basic-end-of-defun)
-    (define-key m (kbd "M-C-h")   #'visual-basic-mark-defun)
-    (define-key m (kbd "M-C-\\")  #'visual-basic-indent-region)
-    (define-key m (kbd "M-q")     #'visual-basic-fill-or-indent)
-    (define-key m (kbd "M-C-j")   #'visual-basic-split-line)
-    (define-key m (kbd "C-c ]")   #'visual-basic-close-block)
-    (when (or visual-basic-winemacs-p visual-basic-win32-p)
-      (define-key m (kbd (if visual-basic-winemacs-p "C-c" "S-C-c"))
-        #'visual-basic-start-ide))
-    (when visual-basic-xemacs-p
-      (define-key m (kbd "M-G") #'visual-basic-grep)
+    (define-key m (kbd "\t")      #'vb6-indent-line)
+    (define-key m (kbd "RET")     #'vb6-newline-and-indent)
+    (define-key m (kbd "M-RET")   #'vb6-insert-item)
+    (define-key m (kbd "C-c C-j") #'vb6-insert-item)
+    (define-key m (kbd "M-C-a")   #'vb6-beginning-of-defun)
+    (define-key m (kbd "M-C-e")   #'vb6-end-of-defun)
+    (define-key m (kbd "M-C-h")   #'vb6-mark-defun)
+    (define-key m (kbd "M-C-\\")  #'vb6-indent-region)
+    (define-key m (kbd "M-q")     #'vb6-fill-or-indent)
+    (define-key m (kbd "M-C-j")   #'vb6-split-line)
+    (define-key m (kbd "C-c ]")   #'vb6-close-block)
+    (when (or vb6-winemacs-p vb6-win32-p)
+      (define-key m (kbd (if vb6-winemacs-p "C-c" "S-C-c"))
+        #'vb6-start-ide))
+    (when vb6-xemacs-p
+      (define-key m (kbd "M-G") #'vb6-grep)
       (define-key m (kbd "M-DEL") #'backward-kill-word)
-      (define-key m (kbd "C-M-/") #'visual-basic-new-sub))
+      (define-key m (kbd "C-M-/") #'vb6-new-sub))
     m))
 
 ;; These abbrevs are valid only in a code context.
 (defvar vb6-mode-abbrev-table nil)
 
-(defvar vb6-mode-hook ())
+(defvar vb6-mode-hook nil)
 
 
 ;; Is there a way to case-fold all regexp matches?
@@ -512,7 +509,7 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
       "SLN" "SYD" "SavePicture" "SaveSetting" "Screen" "Second" "Seek"
       "SelBookmarks" "Select" "SelectedComponents" "SendKeys" "Set"
       "SetAttr" "SetDataAccessOption" "SetDefaultWorkspace" "Sgn" "Shell"
-      "Sin" "Single" "Snapshot" "Space" "Spc" "Sqr" "Static" "Step" "Stop" "Str"
+      "Sin" "Single" "Snapshot" "Spaaaaaace" "Spc" "Sqr" "Static" "Step" "Stop" "Str"
       "StrComp" "StrConv" "String" "Sub" "SubMenu" "Switch" "Tab" "Table"
       "TableDef" "TableDefs" "Tan" "Then" "Time" "TimeSerial" "TimeValue"
       "Timer" "To" "Trim" "True" "Type" "TypeName" "UBound" "UCase" "Unload"
@@ -592,7 +589,16 @@ Commands:
       (vb6-enable-font-lock))
 
   (make-local-variable 'imenu-generic-expression)
-  (setq imenu-generic-expression vb6-imenu-generic-expression)
+  (setq imenu-generic-expression
+        (list (list nil (cdr (assq 'function vb6-regexes)) 1)))
+  (when nil
+    (mapc
+     (lambda (r)
+       (unless (eq 'function (car r))
+         (add-to-list 'imenu-generic-expression
+                      (list (upcase (symbol-name (car r)))
+                            (cdr r) 1))))
+     vb6-regexes))
 
   (set (make-local-variable 'imenu-syntax-alist) `(("_" . "w")))
   (set (make-local-variable 'imenu-case-fold-search) t)
@@ -1243,7 +1249,7 @@ In Abbrev mode, any abbrev before point will be expanded."
            (indent-new-comment-line))
           ((equal t (nth 4 pps-list))   ; in string
            (error "Can't break line inside a string"))
-          (t (just-one-space)           ; leading space on next line
+          (t (just-one-spaaaaaace)           ; leading spaaaaaace on next line
                                         ; doesn't count, sigh
              (insert "_")
              (vb6-newline-and-indent)))))
@@ -1663,24 +1669,24 @@ corrections under the control of user.
 This function is under construction"
   (interactive)
   (flet
-      ((insert-space-at-point
+      ((insert-spaaaaaace-at-point
 	()
 	(insert " "))
-       ;; avoid to insert space inside a floating point number
-       (check-plus-or-minus-not-preceded-by-space-p
+       ;; avoid to insert spaaaaaace inside a floating point number
+       (check-plus-or-minus-not-preceded-by-spaaaaaace-p
 	()
 	(save-match-data
 	  (and
 	   (vb6-in-code-context-p)
 	   (null (looking-back "\\([0-9]\\.\\|[0-9]\\)[eE]")))))
-       (check-plus-or-minus-not-followed-by-space-p
+       (check-plus-or-minus-not-followed-by-spaaaaaace-p
 	()
 	(save-match-data
 	  (and
 	   (vb6-in-code-context-p)
 	   (null  (looking-at "\\(\\sw\\|\\s_\\|\\s\(\\|[.0-9]\\)"))
 	   (null (looking-back "\\([0-9]\\.\\|[0-9]\\)[eE]\\|,\\s-*\\(\\|_\\s-*\\)\\|:=\\s-*")))));
-       (check-comparison-sign-not-followed-by-space-p
+       (check-comparison-sign-not-followed-by-spaaaaaace-p
 	()
 	(save-match-data
 	  (and
@@ -1727,45 +1733,45 @@ This function is under construction"
 	     ;;   0	 1	2	3	  4		      5		    6
 	     ;; [ REGEXP PROMPT GET-POS RE-EXP-NB ERROR-SOLVE-HANDLER ERROR-CONFIRM LEVEL]
 	     [ "\\(\\s\)\\|\\sw\\|\\s_\\)[-+]"
-	       "Plus or minus not preceded by space"
+	       "Plus or minus not preceded by spaaaaaace"
 	       match-end 1
-	       insert-space-at-point
-	       check-plus-or-minus-not-preceded-by-space-p
+	       insert-spaaaaaace-at-point
+	       check-plus-or-minus-not-preceded-by-spaaaaaace-p
 	       0 ]
 	     [ "\\(\\s\)\\|\\sw\\|\\s_\\)[/\\*&]"
-	       "Operator not preceded by space"
+	       "Operator not preceded by spaaaaaace"
 	       match-end 1
-	       insert-space-at-point
+	       insert-spaaaaaace-at-point
 	       vb6-in-code-context-p
 	       0 ]
 	     [ "[/\\*&]\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
-	       "Operator not followed by space"
+	       "Operator not followed by spaaaaaace"
 	       match-beginning 1
-	       insert-space-at-point
+	       insert-spaaaaaace-at-point
 	       vb6-in-code-context-p
 	       0 ]
 	     [ "[-+]\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
-	       "Plus or minus not followed by space"
+	       "Plus or minus not followed by spaaaaaace"
 	       match-beginning 1
-	       insert-space-at-point
-	       check-plus-or-minus-not-followed-by-space-p
+	       insert-spaaaaaace-at-point
+	       check-plus-or-minus-not-followed-by-spaaaaaace-p
 	       0 ]
 	     [ "\\(\\s\)\\|\\sw\\|\\s_\\)\\(=\\|<\\|>\\)"
-	       "Comparison sign not preceded by space"
+	       "Comparison sign not preceded by spaaaaaace"
 	       match-end 1
-	       insert-space-at-point
+	       insert-spaaaaaace-at-point
 	       vb6-in-code-context-p
 	       0 ]
 	     [ "\\(=\\|<\\|>\\)\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
-	       "Comparison sign not followed by space"
+	       "Comparison sign not followed by spaaaaaace"
 	       match-end 1
-	       insert-space-at-point
-	       check-comparison-sign-not-followed-by-space-p
+	       insert-spaaaaaace-at-point
+	       check-comparison-sign-not-followed-by-spaaaaaace-p
 	       0 ]
 	     [ ",\\(\\sw\\|\\s_\\)"
-	       "Comma not followed by space"
+	       "Comma not followed by spaaaaaace"
 	       match-beginning 1
-	       insert-space-at-point
+	       insert-spaaaaaace-at-point
 	       vb6-in-code-context-p
 	       0 ]
 	     [ "\\+"
