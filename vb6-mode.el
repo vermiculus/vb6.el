@@ -509,7 +509,7 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
       "SLN" "SYD" "SavePicture" "SaveSetting" "Screen" "Second" "Seek"
       "SelBookmarks" "Select" "SelectedComponents" "SendKeys" "Set"
       "SetAttr" "SetDataAccessOption" "SetDefaultWorkspace" "Sgn" "Shell"
-      "Sin" "Single" "Snapshot" "Spaaaaaace" "Spc" "Sqr" "Static" "Step" "Stop" "Str"
+      "Sin" "Single" "Snapshot" "Space" "Spc" "Sqr" "Static" "Step" "Stop" "Str"
       "StrComp" "StrConv" "String" "Sub" "SubMenu" "Switch" "Tab" "Table"
       "TableDef" "TableDefs" "Tan" "Then" "Time" "TimeSerial" "TimeValue"
       "Timer" "To" "Trim" "True" "Type" "TypeName" "UBound" "UCase" "Unload"
@@ -1249,7 +1249,7 @@ In Abbrev mode, any abbrev before point will be expanded."
            (indent-new-comment-line))
           ((equal t (nth 4 pps-list))   ; in string
            (error "Can't break line inside a string"))
-          (t (just-one-spaaaaaace)           ; leading spaaaaaace on next line
+          (t (just-one-space)           ; leading space on next line
                                         ; doesn't count, sigh
              (insert "_")
              (vb6-newline-and-indent)))))
@@ -1669,24 +1669,24 @@ corrections under the control of user.
 This function is under construction"
   (interactive)
   (flet
-      ((insert-spaaaaaace-at-point
+      ((insert-space-at-point
 	()
 	(insert " "))
-       ;; avoid to insert spaaaaaace inside a floating point number
-       (check-plus-or-minus-not-preceded-by-spaaaaaace-p
+       ;; avoid to insert space inside a floating point number
+       (check-plus-or-minus-not-preceded-by-space-p
 	()
 	(save-match-data
 	  (and
 	   (vb6-in-code-context-p)
 	   (null (looking-back "\\([0-9]\\.\\|[0-9]\\)[eE]")))))
-       (check-plus-or-minus-not-followed-by-spaaaaaace-p
+       (check-plus-or-minus-not-followed-by-space-p
 	()
 	(save-match-data
 	  (and
 	   (vb6-in-code-context-p)
 	   (null  (looking-at "\\(\\sw\\|\\s_\\|\\s\(\\|[.0-9]\\)"))
 	   (null (looking-back "\\([0-9]\\.\\|[0-9]\\)[eE]\\|,\\s-*\\(\\|_\\s-*\\)\\|:=\\s-*")))));
-       (check-comparison-sign-not-followed-by-spaaaaaace-p
+       (check-comparison-sign-not-followed-by-space-p
 	()
 	(save-match-data
 	  (and
@@ -1733,45 +1733,45 @@ This function is under construction"
 	     ;;   0	 1	2	3	  4		      5		    6
 	     ;; [ REGEXP PROMPT GET-POS RE-EXP-NB ERROR-SOLVE-HANDLER ERROR-CONFIRM LEVEL]
 	     [ "\\(\\s\)\\|\\sw\\|\\s_\\)[-+]"
-	       "Plus or minus not preceded by spaaaaaace"
+	       "Plus or minus not preceded by space"
 	       match-end 1
-	       insert-spaaaaaace-at-point
-	       check-plus-or-minus-not-preceded-by-spaaaaaace-p
+	       insert-space-at-point
+	       check-plus-or-minus-not-preceded-by-space-p
 	       0 ]
 	     [ "\\(\\s\)\\|\\sw\\|\\s_\\)[/\\*&]"
-	       "Operator not preceded by spaaaaaace"
+	       "Operator not preceded by space"
 	       match-end 1
-	       insert-spaaaaaace-at-point
+	       insert-space-at-point
 	       vb6-in-code-context-p
 	       0 ]
 	     [ "[/\\*&]\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
-	       "Operator not followed by spaaaaaace"
+	       "Operator not followed by space"
 	       match-beginning 1
-	       insert-spaaaaaace-at-point
+	       insert-space-at-point
 	       vb6-in-code-context-p
 	       0 ]
 	     [ "[-+]\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
-	       "Plus or minus not followed by spaaaaaace"
+	       "Plus or minus not followed by space"
 	       match-beginning 1
-	       insert-spaaaaaace-at-point
-	       check-plus-or-minus-not-followed-by-spaaaaaace-p
+	       insert-space-at-point
+	       check-plus-or-minus-not-followed-by-space-p
 	       0 ]
 	     [ "\\(\\s\)\\|\\sw\\|\\s_\\)\\(=\\|<\\|>\\)"
-	       "Comparison sign not preceded by spaaaaaace"
+	       "Comparison sign not preceded by space"
 	       match-end 1
-	       insert-spaaaaaace-at-point
+	       insert-space-at-point
 	       vb6-in-code-context-p
 	       0 ]
 	     [ "\\(=\\|<\\|>\\)\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
-	       "Comparison sign not followed by spaaaaaace"
+	       "Comparison sign not followed by space"
 	       match-end 1
-	       insert-spaaaaaace-at-point
-	       check-comparison-sign-not-followed-by-spaaaaaace-p
+	       insert-space-at-point
+	       check-comparison-sign-not-followed-by-space-p
 	       0 ]
 	     [ ",\\(\\sw\\|\\s_\\)"
-	       "Comma not followed by spaaaaaace"
+	       "Comma not followed by space"
 	       match-beginning 1
-	       insert-spaaaaaace-at-point
+	       insert-space-at-point
 	       vb6-in-code-context-p
 	       0 ]
 	     [ "\\+"
