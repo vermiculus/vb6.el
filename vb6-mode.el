@@ -294,54 +294,6 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
         "Public Property Get ()\nEnd Property\n\n")
   "*List of function templates though which `vb6-new-sub' cycles.")
 
-
-
-
-(defvar vb6-mode-syntax-table nil)
-(if vb6-mode-syntax-table
-    ()
-  (setq vb6-mode-syntax-table (make-syntax-table))
-  (modify-syntax-entry ?\' "\<" vb6-mode-syntax-table) ; Comment starter
-  (modify-syntax-entry ?\n ">" vb6-mode-syntax-table)
-  (modify-syntax-entry ?\\ "w" vb6-mode-syntax-table)
-  (modify-syntax-entry ?_ "_" vb6-mode-syntax-table)
-                                        ; Make operators puncutation so that regexp search \_< and \_> works properly
-  (modify-syntax-entry ?+ "." vb6-mode-syntax-table)
-  (modify-syntax-entry ?- "." vb6-mode-syntax-table)
-  (modify-syntax-entry ?* "." vb6-mode-syntax-table)
-  (modify-syntax-entry ?/ "." vb6-mode-syntax-table)
-  (modify-syntax-entry ?\\ "." vb6-mode-syntax-table)
-                                        ; Make =, etc., punctuation so that dynamic abbreviations work properly
-  (modify-syntax-entry ?\= "." vb6-mode-syntax-table)
-  (modify-syntax-entry ?\< "." vb6-mode-syntax-table)
-  (modify-syntax-entry ?\> "." vb6-mode-syntax-table))
-
-
-(defvar vb6-mode-map nil)
-(if vb6-mode-map
-    ()
-  (setq vb6-mode-map (make-sparse-keymap))
-  (define-key vb6-mode-map "\t" 'vb6-indent-line)
-  (define-key vb6-mode-map "\r" 'vb6-newline-and-indent)
-  (define-key vb6-mode-map "\M-\r" 'vb6-insert-item)
-  (define-key vb6-mode-map "\C-c\C-j" 'vb6-insert-item)
-  (define-key vb6-mode-map "\M-\C-a" 'vb6-beginning-of-defun)
-  (define-key vb6-mode-map "\M-\C-e" 'vb6-end-of-defun)
-  (define-key vb6-mode-map "\M-\C-h" 'vb6-mark-defun)
-  (define-key vb6-mode-map "\M-\C-\\" 'vb6-indent-region)
-  (define-key vb6-mode-map "\M-q" 'vb6-fill-or-indent)
-  (define-key vb6-mode-map "\M-\C-j" 'vb6-split-line)
-  (define-key vb6-mode-map "\C-c]" 'vb6-close-block)
-  (cond (vb6-winemacs-p
-         (define-key vb6-mode-map '(control C) 'vb6-start-ide))
-        (vb6-win32-p
-         (define-key vb6-mode-map (read "[?\\S-\\C-c]") 'vb6-start-ide)))
-  (if vb6-xemacs-p
-      (progn
-        (define-key vb6-mode-map "\M-G" 'vb6-grep)
-        (define-key vb6-mode-map '(meta backspace) 'backward-kill-word)
-        (define-key vb6-mode-map '(control meta /) 'vb6-new-sub))))
-
 (defvar visual-basic-imenu-generic-expression
   `((nil ,(rx (* (syntax whitespace))
               (? (| "public" "private")
@@ -387,6 +339,48 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
                   (+ (syntax whitespace))
                   (group (+ (or (syntax symbol) (syntax word)))))
      1)))
+
+(defvar visual-basic-mode-syntax-table
+  (let ((s (make-syntax-table)))
+    (mapc (lambda (p) (modify-syntax-entry (car p) (cdr p) s))
+          '((?\' . "\<") ; Comment starter
+            (?\n . ">")
+            (?\\ . "w")
+            (?_ . "_")
+            (?. . "_")
+            ;; Make operators puncutation so that regexp search \_< and \_> works properly
+            (?+ . ".")
+            (?- . ".")
+            (?* . ".")
+            (?/ . ".")
+            (?\\ . ".")
+            ;; Make =, etc., punctuation so that dynamic abbreviations work properly
+            (?\= . ".")
+            (?\< . ".")
+            (?\> . ".")))
+    s))
+
+(defvar visual-basic-mode-map
+  (let ((m (make-sparse-keymap)))
+    (define-key m (kbd "\t")      #'visual-basic-indent-line)
+    (define-key m (kbd "RET")     #'visual-basic-newline-and-indent)
+    (define-key m (kbd "M-RET")   #'visual-basic-insert-item)
+    (define-key m (kbd "C-c C-j") #'visual-basic-insert-item)
+    (define-key m (kbd "M-C-a")   #'visual-basic-beginning-of-defun)
+    (define-key m (kbd "M-C-e")   #'visual-basic-end-of-defun)
+    (define-key m (kbd "M-C-h")   #'visual-basic-mark-defun)
+    (define-key m (kbd "M-C-\\")  #'visual-basic-indent-region)
+    (define-key m (kbd "M-q")     #'visual-basic-fill-or-indent)
+    (define-key m (kbd "M-C-j")   #'visual-basic-split-line)
+    (define-key m (kbd "C-c ]")   #'visual-basic-close-block)
+    (when (or visual-basic-winemacs-p visual-basic-win32-p)
+      (define-key m (kbd (if visual-basic-winemacs-p "C-c" "S-C-c"))
+        #'visual-basic-start-ide))
+    (when visual-basic-xemacs-p
+      (define-key m (kbd "M-G") #'visual-basic-grep)
+      (define-key m (kbd "M-DEL") #'backward-kill-word)
+      (define-key m (kbd "C-M-/") #'visual-basic-new-sub))
+    m))
 
 ;; These abbrevs are valid only in a code context.
 (defvar vb6-mode-abbrev-table nil)
