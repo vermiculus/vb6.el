@@ -294,16 +294,6 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
         "Public Property Get ()\nEnd Property\n\n")
   "*List of function templates though which `vb6-new-sub' cycles.")
 
-(defvar vb6-imenu-generic-expression
-  '((nil "^\\s-*\\(public\\|private\\)*\\s-*\\(declare\\s-+\\)*\\(sub\\|function\\)\\s-+\\(\\(?:\\sw\\|\\s_\\)+\\>\\)"
-         4)
-    ("Constants"
-     "^\\s-*\\(private\\|public\\|global\\)*\\s-*\\(const\\s-+\\)\\(\\(?:\\sw\\|\\s_\\)+\\>\\s-*=\\s-*.+\\)\\($\\|'\\)"
-     3)
-    ("Variables"
-     "^\\(private\\|public\\|global\\|dim\\)+\\s-+\\(\\(?:\\sw\\|\\s_\\)+\\>\\s-+as\\s-+\\(?:\\sw\\|\\s_\\)+\\>\\)"
-     2)
-    ("Types" "^\\(public\\s-+\\)*type\\s-+\\(\\(?:\\sw\\|\\s_\\)+\\)" 2)))
 
 
 
@@ -352,6 +342,51 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
         (define-key vb6-mode-map '(meta backspace) 'backward-kill-word)
         (define-key vb6-mode-map '(control meta /) 'vb6-new-sub))))
 
+(defvar visual-basic-imenu-generic-expression
+  `((nil ,(rx (* (syntax whitespace))
+              (? (| "public" "private")
+                 (+ (syntax whitespace)))
+              (? "declare"
+                 (+ (syntax whitespace)))
+              (| "sub" "function")
+              (+ (syntax whitespace))
+              (group (+ (| (syntax symbol) (syntax word)))
+                     (? (* (syntax whitespace))
+                        "(" (* anything) ")")
+                     (? (+ (syntax whitespace))
+                        "as"
+                        (+ (syntax whitespace))
+                        (+ (syntax word)))))
+         1)
+    ("Constants" ,(rx (* (syntax whitespace))
+                      (? (or "private" "public" "global")
+                         (+ (syntax whitespace)))
+                      "const"
+                      (+ (syntax whitespace))
+                      (group (+ (or (syntax symbol) (syntax word)))
+                             word-end
+                             (* (syntax whitespace))
+                             "="
+                             (* (syntax whitespace))
+                             (+? anything))
+                      (or line-end (syntax comment-start)))
+     1)
+    ("Variables" ,(rx (* (syntax whitespace))
+                      (+ (or "public" "private" "global" "dim"))
+                      (+ (syntax whitespace))
+                      (group (+ (or (syntax symbol) (syntax word)))
+                             word-end
+                             (+ (syntax whitespace))
+                             "as"
+                             (+ (syntax whitespace))
+                             (+ (or (syntax symbol) (syntax word)))
+                             word-end))
+     1)
+    ("Types" ,(rx (? "public" (+ (syntax whitespace)))
+                  "type"
+                  (+ (syntax whitespace))
+                  (group (+ (or (syntax symbol) (syntax word)))))
+     1)))
 
 ;; These abbrevs are valid only in a code context.
 (defvar vb6-mode-abbrev-table nil)
