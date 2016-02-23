@@ -1,4 +1,4 @@
-;;; visual-basic-mode.el --- A mode for editing Visual Basic programs.
+;;; vb6-mode.el --- A mode for editing Visual Basic programs.
 
 ;; This is free software.
 ;; Modified version of Fred White's visual-basic-mode.el
@@ -9,6 +9,7 @@
 ;;   (additions by Dave Love)
 ;; Copyright (C) 2008-2009 Free Software Foundation, Inc.
 ;;   (additions by Randolph Fritz and Vincent Belaiche (VB1) )
+;; Copyright (C) 2016 Sean Allred
 
 ;; Author: Fred White <fwhite@alum.mit.edu>
 ;; Adapted-by: Dave Love <d.love@dl.ac.uk>
@@ -17,11 +18,11 @@
 ;;           : Vincent Belaiche (VB1) <vincentb1@users.sourceforge.net>
 ;;                https://github.com/vincentb1
 ;;                http://www.emacswiki.org/Vincent%20Bela%c3%afche
-;; Version: 1.5 (2014-12-07)
-;; Serial Version: %Id: 47%
+;;           : Sean Allred (SEA) <code@seanallred.com>
+;;                https://github.com/vermiculus
+;; Version: 2.0 (2016-03-01)
+;; Serial Version: %Id: 48%
 ;; Keywords: languages, basic, Evil
-;; X-URL:  http://www.emacswiki.org/cgi-bin/wiki/visual-basic-mode.el
-
 
 ;; (Old) LCD Archive Entry:
 ;; basic-mode|Fred White|fwhite@alum.mit.edu|
@@ -57,23 +58,20 @@
 ;;  convenience functions.
 
 ;; Installation instructions
-;;  Put visual-basic-mode.el somewhere in your path, compile it, and add
+;;  Put vb6-mode.el somewhere in your path, compile it, and add
 ;;  the following to your init file:
 
-;;  (autoload 'visual-basic-mode "visual-basic-mode" "Visual Basic mode." t)
+;;  (autoload 'vb6-mode "vb6-mode" "Visual Basic mode." t)
 ;;  (setq auto-mode-alist (append '(("\\.\\(frm\\|bas\\|cls\\)$" .
-;;                                  visual-basic-mode)) auto-mode-alist))
+;;                                  vb6-mode)) auto-mode-alist))
 ;;
 ;;  If you are doing Rhino scripts, add:
 ;;  (setq auto-mode-alist (append '(("\\.\\(frm\\|bas\\|cls\\|rvb\\)$" .
-;;                                  visual-basic-mode)) auto-mode-alist))
+;;                                  vb6-mode)) auto-mode-alist))
 
-;;  If you had visual-basic-mode already installed, you may need to call
-;;  visual-basic-upgrade-keyword-abbrev-table the first time that
-;;  visual-basic-mode is loaded.
-
-;; Of course, under Windows 3.1, you'll have to name this file
-;; something shorter than visual-basic-mode.el
+;;  If you had vb6-mode already installed, you may need to call
+;;  vb6-upgrade-keyword-abbrev-table the first time that
+;;  vb6-mode is loaded.
 
 ;; Revisions:
 ;; 1.0 18-Apr-96  Initial version
@@ -145,6 +143,7 @@
 ;; 1.4.12 VB1 - add visual-basic-propertize-attribute
 ;; 1.4.13 VB1 - set default indentation to 3 char to stick to http://en.wikibooks.org/wiki/Visual_Basic/Coding_Standards#White_Space_and_Indentation
 ;; 1.5    VB1 - Make the indentation of defun's recursive, i.e. a Sub defined within a Class will be indented by one indentatiation. 
+;; 2.0 SEA Modernize; rename to vb6-mode
 
 ;;
 ;; Notes:
@@ -203,75 +202,75 @@
 
 (eval-when-compile (require 'cl))
 
-(defvar visual-basic-xemacs-p (string-match "XEmacs\\|Lucid" (emacs-version)))
-(defvar visual-basic-winemacs-p (string-match "Win-Emacs" (emacs-version)))
-(defvar visual-basic-win32-p (eq window-system 'w32))
+(defvar vb6-xemacs-p (string-match "XEmacs\\|Lucid" (emacs-version)))
+(defvar vb6-winemacs-p (string-match "Win-Emacs" (emacs-version)))
+(defvar vb6-win32-p (eq window-system 'w32))
 
 ;; Variables you may want to customize.
-(defgroup visual-basic nil
+(defgroup vb6 nil
   "Customization of the Visual Basic mode."
   :link '(custom-group-link :tag "Font Lock Faces group" font-lock-faces)
   :group 'languages   )
 
-(defcustom visual-basic-mode-indent 3
+(defcustom vb6-mode-indent 3
   "*Default indentation per nesting level.
 
 Default value is 3 as per http://en.wikibooks.org/wiki/Visual_Basic/Coding_Standards#White_Space_and_Indentation."
   :type 'integer
-  :group 'visual-basic)
+  :group 'vb6)
 
-(defcustom visual-basic-fontify-p t
+(defcustom vb6-fontify-p t
   "*Whether to fontify Basic buffers."
   :type 'boolean
-  :group 'visual-basic)
+  :group 'vb6)
 
-(defcustom visual-basic-capitalize-keywords-p t
+(defcustom vb6-capitalize-keywords-p t
   "*Whether to capitalize BASIC keywords."
   :type 'boolean
-  :group 'visual-basic)
+  :group 'vb6)
 
-(defcustom visual-basic-wild-files "*.frm *.bas *.cls"
+(defcustom vb6-wild-files "*.frm *.bas *.cls"
   "*Wildcard pattern for BASIC source files."
   :type 'string
-  :group 'visual-basic)
+  :group 'vb6)
 
-(defcustom visual-basic-ide-pathname nil
+(defcustom vb6-ide-pathname nil
   "*The full pathname of your Visual Basic exe file, if any."
   :type '(choice
 	  (const nil :tag "no IDE available" )
 	  (file :must-match  t :tag "IDE exe path" ))
-  :group 'visual-basic)
+  :group 'vb6)
 
-(defcustom visual-basic-allow-single-line-if t
+(defcustom vb6-allow-single-line-if t
   "*Whether to allow single line if."
   :type 'boolean
-  :group 'visual-basic)
+  :group 'vb6)
 
 
-(defcustom visual-basic-auto-check-style-level -1
+(defcustom vb6-auto-check-style-level -1
   "Tune what style error are automatically corrected by function
-`visual-basic-check-style'. The higher this number, the more
+`vb6-check-style'. The higher this number, the more
 types of errors are automatically corrected.
 
 * -1 : all errors correction need confirmation by user
 
 *  0 : punctuation errors are automatically corrected"
   :type 'integer
-  :group 'visual-basic)
+  :group 'vb6)
 
-(defcustom visual-basic-variable-scope-prefix-re
+(defcustom vb6-variable-scope-prefix-re
   "[gm]?"
   "Variable naming convention, scope prefix regexp. Please refer
 to
 http://en.wikibooks.org/wiki/Visual_Basic/Coding_Standards. This
-is used by function `visual-basic-propertize-attribute'. 
+is used by function `vb6-propertize-attribute'. 
 
 Note: shall not contain any \\( \\) (use \\(?: if need be)."
   :type 'regexp
-  :group 'visual-basic
+  :group 'vb6
   )
 
-(defcustom visual-basic-variable-type-prefix-re
+(defcustom vb6-variable-type-prefix-re
   (regexp-opt '("i" ; integer
 		"l" ; long
 		"flt"; single or double
@@ -279,24 +278,23 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
 		"v" ; variant
 		"dbl" "sng"; double single
 		"s"; string
-		) t)
+		))
   "Variable naming convention, type prefix regexp. Please refer
 to
 http://en.wikibooks.org/wiki/Visual_Basic/Coding_Standards. This
-is used by function `visual-basic-propertize-attribute'.
+is used by function `vb6-propertize-attribute'.
 
 Note: shall not contain any \\( \\) (use \\(?: if need be)."
   :type 'regexp
-  :group 'visual-basic
-  )
+  :group 'vb6)
 
-(defvar visual-basic-defn-templates
+(defvar vb6-defn-templates
   (list "Public Sub ()\nEnd Sub\n\n"
         "Public Function () As Variant\nEnd Function\n\n"
         "Public Property Get ()\nEnd Property\n\n")
-  "*List of function templates though which `visual-basic-new-sub' cycles.")
+  "*List of function templates though which `vb6-new-sub' cycles.")
 
-(defvar visual-basic-imenu-generic-expression
+(defvar vb6-imenu-generic-expression
   '((nil "^\\s-*\\(public\\|private\\)*\\s-*\\(declare\\s-+\\)*\\(sub\\|function\\)\\s-+\\(\\(?:\\sw\\|\\s_\\)+\\>\\)"
          4)
     ("Constants"
@@ -309,79 +307,79 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
 
 
 
-(defvar visual-basic-mode-syntax-table nil)
-(if visual-basic-mode-syntax-table
+(defvar vb6-mode-syntax-table nil)
+(if vb6-mode-syntax-table
     ()
-  (setq visual-basic-mode-syntax-table (make-syntax-table))
-  (modify-syntax-entry ?\' "\<" visual-basic-mode-syntax-table) ; Comment starter
-  (modify-syntax-entry ?\n ">" visual-basic-mode-syntax-table)
-  (modify-syntax-entry ?\\ "w" visual-basic-mode-syntax-table)
-  (modify-syntax-entry ?_ "_" visual-basic-mode-syntax-table)
+  (setq vb6-mode-syntax-table (make-syntax-table))
+  (modify-syntax-entry ?\' "\<" vb6-mode-syntax-table) ; Comment starter
+  (modify-syntax-entry ?\n ">" vb6-mode-syntax-table)
+  (modify-syntax-entry ?\\ "w" vb6-mode-syntax-table)
+  (modify-syntax-entry ?_ "_" vb6-mode-syntax-table)
                                         ; Make operators puncutation so that regexp search \_< and \_> works properly
-  (modify-syntax-entry ?+ "." visual-basic-mode-syntax-table)
-  (modify-syntax-entry ?- "." visual-basic-mode-syntax-table)
-  (modify-syntax-entry ?* "." visual-basic-mode-syntax-table)
-  (modify-syntax-entry ?/ "." visual-basic-mode-syntax-table)
-  (modify-syntax-entry ?\\ "." visual-basic-mode-syntax-table)
+  (modify-syntax-entry ?+ "." vb6-mode-syntax-table)
+  (modify-syntax-entry ?- "." vb6-mode-syntax-table)
+  (modify-syntax-entry ?* "." vb6-mode-syntax-table)
+  (modify-syntax-entry ?/ "." vb6-mode-syntax-table)
+  (modify-syntax-entry ?\\ "." vb6-mode-syntax-table)
                                         ; Make =, etc., punctuation so that dynamic abbreviations work properly
-  (modify-syntax-entry ?\= "." visual-basic-mode-syntax-table)
-  (modify-syntax-entry ?\< "." visual-basic-mode-syntax-table)
-  (modify-syntax-entry ?\> "." visual-basic-mode-syntax-table))
+  (modify-syntax-entry ?\= "." vb6-mode-syntax-table)
+  (modify-syntax-entry ?\< "." vb6-mode-syntax-table)
+  (modify-syntax-entry ?\> "." vb6-mode-syntax-table))
 
 
-(defvar visual-basic-mode-map nil)
-(if visual-basic-mode-map
+(defvar vb6-mode-map nil)
+(if vb6-mode-map
     ()
-  (setq visual-basic-mode-map (make-sparse-keymap))
-  (define-key visual-basic-mode-map "\t" 'visual-basic-indent-line)
-  (define-key visual-basic-mode-map "\r" 'visual-basic-newline-and-indent)
-  (define-key visual-basic-mode-map "\M-\r" 'visual-basic-insert-item)
-  (define-key visual-basic-mode-map "\C-c\C-j" 'visual-basic-insert-item)
-  (define-key visual-basic-mode-map "\M-\C-a" 'visual-basic-beginning-of-defun)
-  (define-key visual-basic-mode-map "\M-\C-e" 'visual-basic-end-of-defun)
-  (define-key visual-basic-mode-map "\M-\C-h" 'visual-basic-mark-defun)
-  (define-key visual-basic-mode-map "\M-\C-\\" 'visual-basic-indent-region)
-  (define-key visual-basic-mode-map "\M-q" 'visual-basic-fill-or-indent)
-  (define-key visual-basic-mode-map "\M-\C-j" 'visual-basic-split-line)
-  (define-key visual-basic-mode-map "\C-c]" 'visual-basic-close-block)
-  (cond (visual-basic-winemacs-p
-         (define-key visual-basic-mode-map '(control C) 'visual-basic-start-ide))
-        (visual-basic-win32-p
-         (define-key visual-basic-mode-map (read "[?\\S-\\C-c]") 'visual-basic-start-ide)))
-  (if visual-basic-xemacs-p
+  (setq vb6-mode-map (make-sparse-keymap))
+  (define-key vb6-mode-map "\t" 'vb6-indent-line)
+  (define-key vb6-mode-map "\r" 'vb6-newline-and-indent)
+  (define-key vb6-mode-map "\M-\r" 'vb6-insert-item)
+  (define-key vb6-mode-map "\C-c\C-j" 'vb6-insert-item)
+  (define-key vb6-mode-map "\M-\C-a" 'vb6-beginning-of-defun)
+  (define-key vb6-mode-map "\M-\C-e" 'vb6-end-of-defun)
+  (define-key vb6-mode-map "\M-\C-h" 'vb6-mark-defun)
+  (define-key vb6-mode-map "\M-\C-\\" 'vb6-indent-region)
+  (define-key vb6-mode-map "\M-q" 'vb6-fill-or-indent)
+  (define-key vb6-mode-map "\M-\C-j" 'vb6-split-line)
+  (define-key vb6-mode-map "\C-c]" 'vb6-close-block)
+  (cond (vb6-winemacs-p
+         (define-key vb6-mode-map '(control C) 'vb6-start-ide))
+        (vb6-win32-p
+         (define-key vb6-mode-map (read "[?\\S-\\C-c]") 'vb6-start-ide)))
+  (if vb6-xemacs-p
       (progn
-        (define-key visual-basic-mode-map "\M-G" 'visual-basic-grep)
-        (define-key visual-basic-mode-map '(meta backspace) 'backward-kill-word)
-        (define-key visual-basic-mode-map '(control meta /) 'visual-basic-new-sub))))
+        (define-key vb6-mode-map "\M-G" 'vb6-grep)
+        (define-key vb6-mode-map '(meta backspace) 'backward-kill-word)
+        (define-key vb6-mode-map '(control meta /) 'vb6-new-sub))))
 
 
 ;; These abbrevs are valid only in a code context.
-(defvar visual-basic-mode-abbrev-table nil)
+(defvar vb6-mode-abbrev-table nil)
 
-(defvar visual-basic-mode-hook ())
+(defvar vb6-mode-hook ())
 
 
 ;; Is there a way to case-fold all regexp matches?
 ;; Change KJW Add enum, , change matching from 0 or more to zero or one for public etc.
 (eval-and-compile
   (progn
-    (defconst visual-basic-defun-start-regexp-formatter
+    (defconst vb6-defun-start-regexp-formatter
       "^[ \t]*\\([Pp]ublic \\|[Pp]rivate \\|[Ss]tatic\\|[Ff]riend \\)?\\(%s\\)[ \t]+\\(\\w+\\)[ \t]*(?")
-    (defconst visual-basic-defun-start-regexp
-      (format visual-basic-defun-start-regexp-formatter "[Ss]ub\\|[Ff]unction\\|[Pp]roperty +[GgSsLl]et\\|[Tt]ype\\|[Ee]num\\|[Cc]lass"))))
+    (defconst vb6-defun-start-regexp
+      (format vb6-defun-start-regexp-formatter "[Ss]ub\\|[Ff]unction\\|[Pp]roperty +[GgSsLl]et\\|[Tt]ype\\|[Ee]num\\|[Cc]lass"))))
 
 
-(defconst visual-basic-defun-end-regexp-formatter
+(defconst vb6-defun-end-regexp-formatter
   "^[ \t]*[Ee]nd +\\(%s\\)")
 
-(defconst visual-basic-defun-end-regexp
-  (format visual-basic-defun-end-regexp-formatter
+(defconst vb6-defun-end-regexp
+  (format vb6-defun-end-regexp-formatter
 	  "[Ss]ub\\|[Ff]unction\\|[Pp]roperty\\|[Tt]ype\\|[Ee]num\\|[Cc]lass"))
 
-(defconst visual-basic-dim-regexp
+(defconst vb6-dim-regexp
   "^[ \t]*\\([Cc]onst\\|[Dd]im\\|[Pp]rivate\\|[Pp]ublic\\)\\_>"  )
 
-(defconst visual-basic-lettable-type-regexp 
+(defconst vb6-lettable-type-regexp 
   (concat "\\`" 
 	  (regexp-opt '("Integer" "Long" "Variant" "Double" "Single" "Boolean") t)
 	  "\\'"))
@@ -395,56 +393,56 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
 ;; requirement for then so as to allow it to match if statements that
 ;; have continuations -- VB1 further elaborated on this for single line
 ;; if statement to be recognized on broken lines.
-;;(defconst visual-basic-if-regexp
+;;(defconst vb6-if-regexp
 ;;   "^[ \t]*#?[Ii]f[ \t]+.*[ \t]+[Tt]hen[ \t]*.*\\('\\|$\\)")
-(defconst visual-basic-if-regexp
+(defconst vb6-if-regexp
   "^[ \t]*#?[Ii]f[ \t]+.*[ \t_]+")
 
-(defconst visual-basic-ifthen-regexp "^[ \t]*#?[Ii]f.+\\<[Tt]hen\\>\\s-\\S-+")
+(defconst vb6-ifthen-regexp "^[ \t]*#?[Ii]f.+\\<[Tt]hen\\>\\s-\\S-+")
 
-(defconst visual-basic-else-regexp "^[ \t]*#?[Ee]lse\\([Ii]f\\)?")
-(defconst visual-basic-endif-regexp "[ \t]*#?[Ee]nd[ \t]*[Ii]f")
+(defconst vb6-else-regexp "^[ \t]*#?[Ee]lse\\([Ii]f\\)?")
+(defconst vb6-endif-regexp "[ \t]*#?[Ee]nd[ \t]*[Ii]f")
 
-(defconst visual-basic-looked-at-continuation-regexp   "_\\s-*$")
+(defconst vb6-looked-at-continuation-regexp   "_\\s-*$")
 
-(defconst visual-basic-continuation-regexp
-  (concat "^\\(.*\\([^_[:alnum:]]\\|[^[:alpha:]_][0-9]+\\)\\)?" visual-basic-looked-at-continuation-regexp))
+(defconst vb6-continuation-regexp
+  (concat "^\\(.*\\([^_[:alnum:]]\\|[^[:alpha:]_][0-9]+\\)\\)?" vb6-looked-at-continuation-regexp))
 
 (eval-and-compile
-  (defconst visual-basic-label-regexp "^[ \t]*[a-zA-Z0-9_]+:$"))
+  (defconst vb6-label-regexp "^[ \t]*[a-zA-Z0-9_]+:$"))
 
-(defconst visual-basic-select-regexp "^[ \t]*[Ss]elect[ \t]+[Cc]ase\\_>")
-(defconst visual-basic-case-regexp "^\\([ \t]*\\)[Cc]ase\\_>")
-(defconst visual-basic-case-else-regexp "^\\([ \t]*\\)[Cc]ase\\(\\s-+[Ee]lse\\)\\_>")
-(defconst visual-basic-select-end-regexp "^\\([ \t]*\\)[Ee]nd[ \t]+[Ss]elect\\_>")
+(defconst vb6-select-regexp "^[ \t]*[Ss]elect[ \t]+[Cc]ase\\_>")
+(defconst vb6-case-regexp "^\\([ \t]*\\)[Cc]ase\\_>")
+(defconst vb6-case-else-regexp "^\\([ \t]*\\)[Cc]ase\\(\\s-+[Ee]lse\\)\\_>")
+(defconst vb6-select-end-regexp "^\\([ \t]*\\)[Ee]nd[ \t]+[Ss]elect\\_>")
 
 
-(defconst visual-basic-for-regexp "^[ \t]*[Ff]or\\b")
-(defconst visual-basic-next-regexp "^[ \t]*[Nn]ext\\b")
+(defconst vb6-for-regexp "^[ \t]*[Ff]or\\b")
+(defconst vb6-next-regexp "^[ \t]*[Nn]ext\\b")
 
-(defconst visual-basic-do-regexp "^[ \t]*[Dd]o\\b")
-(defconst visual-basic-loop-regexp "^[ \t]*[Ll]oop\\b")
+(defconst vb6-do-regexp "^[ \t]*[Dd]o\\b")
+(defconst vb6-loop-regexp "^[ \t]*[Ll]oop\\b")
 
-(defconst visual-basic-while-regexp "^[ \t]*[Ww]hile\\b")
-(defconst visual-basic-wend-regexp "^[ \t]*[Ww]end\\b")
+(defconst vb6-while-regexp "^[ \t]*[Ww]hile\\b")
+(defconst vb6-wend-regexp "^[ \t]*[Ww]end\\b")
 
 ;; Added KJW Begin..end for forms
-(defconst visual-basic-begin-regexp "^[ \t]*[Bb]egin)?")
+(defconst vb6-begin-regexp "^[ \t]*[Bb]egin)?")
 ;; This has created a bug.  End on its own in code should not outdent.
 ;; How can we fix this?  They are used in separate Lisp expressions so
 ;; add another one.
-(defconst visual-basic-end-begin-regexp "^[ \t]*[Ee]nd")
+(defconst vb6-end-begin-regexp "^[ \t]*[Ee]nd")
 
-(defconst visual-basic-with-regexp "^[ \t]*[Ww]ith\\b")
-(defconst visual-basic-end-with-regexp "^[ \t]*[Ee]nd[ \t]+[Ww]ith\\b")
+(defconst vb6-with-regexp "^[ \t]*[Ww]ith\\b")
+(defconst vb6-end-with-regexp "^[ \t]*[Ee]nd[ \t]+[Ww]ith\\b")
 
-(defconst visual-basic-blank-regexp "^[ \t]*$")
-(defconst visual-basic-comment-regexp "^[ \t]*\\s<.*$")
+(defconst vb6-blank-regexp "^[ \t]*$")
+(defconst vb6-comment-regexp "^[ \t]*\\s<.*$")
 
 
 ;; This is some approximation of the set of reserved words in Visual Basic.
 (eval-and-compile
-  (defvar visual-basic-all-keywords
+  (defvar vb6-all-keywords
     '("Add" "Aggregate" "And" "App" "AppActivate" "Application" "Array" "As"
       "Asc" "AscB" "Atn" "Attribute"
       "Beep" "Begin" "BeginTrans" "Boolean" "ByVal" "ByRef"
@@ -492,17 +490,17 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
       "Unlock" "Val" "Variant" "VarType" "Verb" "Weekday" "Wend"
       "While" "Width" "With" "Workspace" "Workspaces" "Write" "Year")))
 
-(defvar visual-basic-font-lock-keywords-1
+(defvar vb6-font-lock-keywords-1
   (eval-when-compile
     (list
      ;; Names of functions.
-     (list visual-basic-defun-start-regexp
+     (list vb6-defun-start-regexp
            '(1 font-lock-keyword-face nil t)
            '(2 font-lock-keyword-face nil t)
            '(3 font-lock-function-name-face))
 
      ;; Statement labels
-     (cons visual-basic-label-regexp 'font-lock-keyword-face)
+     (cons vb6-label-regexp 'font-lock-keyword-face)
 
      ;; Case values
      ;; String-valued cases get font-lock-string-face regardless.
@@ -513,40 +511,40 @@ Note: shall not contain any \\( \\) (use \\(?: if need be)."
             '("Dim" "If" "Then" "Else" "ElseIf" "End If") 'words)
            1 'font-lock-keyword-face))))
 
-(defvar visual-basic-font-lock-keywords-2
-  (append visual-basic-font-lock-keywords-1
+(defvar vb6-font-lock-keywords-2
+  (append vb6-font-lock-keywords-1
           (eval-when-compile
-            `((, (regexp-opt visual-basic-all-keywords 'words)
+            `((, (regexp-opt vb6-all-keywords 'words)
                  1 font-lock-keyword-face)))))
 
-(defvar visual-basic-font-lock-keywords visual-basic-font-lock-keywords-1)
+(defvar vb6-font-lock-keywords vb6-font-lock-keywords-1)
 
 
-(put 'visual-basic-mode 'font-lock-keywords 'visual-basic-font-lock-keywords)
+(put 'vb6-mode 'font-lock-keywords 'vb6-font-lock-keywords)
 
 ;;;###autoload
-(defun visual-basic-mode ()
+(defun vb6-mode ()
   "A mode for editing Microsoft Visual Basic programs.
 Features automatic indentation, font locking, keyword capitalization,
 and some minor convenience functions.
 Commands:
-\\{visual-basic-mode-map}"
+\\{vb6-mode-map}"
   (interactive)
   (kill-all-local-variables)
-  (use-local-map visual-basic-mode-map)
-  (setq major-mode 'visual-basic-mode)
+  (use-local-map vb6-mode-map)
+  (setq major-mode 'vb6-mode)
   (setq mode-name "Visual Basic")
-  (set-syntax-table visual-basic-mode-syntax-table)
+  (set-syntax-table vb6-mode-syntax-table)
 
   ;; This should be the users choice
-  ;;(add-hook 'local-write-file-hooks 'visual-basic-untabify)
+  ;;(add-hook 'local-write-file-hooks 'vb6-untabify)
 
-  (setq local-abbrev-table visual-basic-mode-abbrev-table)
-  (if visual-basic-capitalize-keywords-p
+  (setq local-abbrev-table vb6-mode-abbrev-table)
+  (if vb6-capitalize-keywords-p
       (progn
         ;;(make-local-variable 'pre-abbrev-expand-hook)
-        ;;(add-hook 'pre-abbrev-expand-hook 'visual-basic-pre-abbrev-expand-hook)
-        (add-hook 'abbrev-expand-functions 'visual-basic-abbrev-expand-function nil t)
+        ;;(add-hook 'pre-abbrev-expand-hook 'vb6-pre-abbrev-expand-hook)
+        (add-hook 'abbrev-expand-functions 'vb6-abbrev-expand-function nil t)
         (abbrev-mode 1)))
 
   (make-local-variable 'comment-start)
@@ -559,31 +557,31 @@ Commands:
   (setq comment-end "")
 
   (make-local-variable 'indent-line-function)
-  (setq indent-line-function 'visual-basic-indent-line)
+  (setq indent-line-function 'vb6-indent-line)
 
-  (if visual-basic-fontify-p
-      (visual-basic-enable-font-lock))
+  (if vb6-fontify-p
+      (vb6-enable-font-lock))
 
   (make-local-variable 'imenu-generic-expression)
-  (setq imenu-generic-expression visual-basic-imenu-generic-expression)
+  (setq imenu-generic-expression vb6-imenu-generic-expression)
 
   (set (make-local-variable 'imenu-syntax-alist) `(("_" . "w")))
   (set (make-local-variable 'imenu-case-fold-search) t)
 
-  ;;(make-local-variable 'visual-basic-associated-files)
+  ;;(make-local-variable 'vb6-associated-files)
   ;; doing this here means we need not check to see if it is bound later.
-  (add-hook 'find-file-hooks 'visual-basic-load-associated-files)
+  (add-hook 'find-file-hooks 'vb6-load-associated-files)
 
-  (run-hooks 'visual-basic-mode-hook))
+  (run-hooks 'vb6-mode-hook))
 
 
-(defun visual-basic-enable-font-lock ()
+(defun vb6-enable-font-lock ()
   "Enable font locking."
   ;; Emacs 19.29 requires a window-system else font-lock-mode errs out.
-  (cond ((or visual-basic-xemacs-p window-system (not (string-equal (emacs-version) "19.29")))
+  (cond ((or vb6-xemacs-p window-system (not (string-equal (emacs-version) "19.29")))
 
          ;; In win-emacs this sets font-lock-keywords back to nil!
-         (if visual-basic-winemacs-p
+         (if vb6-winemacs-p
              (font-lock-mode 1))
 
          ;; Accomodate emacs 19.29+
@@ -591,15 +589,15 @@ Commands:
          (cond ((boundp 'font-lock-defaults)
                 (make-local-variable 'font-lock-defaults)
                 (setq font-lock-defaults
-                      `((visual-basic-font-lock-keywords
-                         visual-basic-font-lock-keywords-1
-                         visual-basic-font-lock-keywords-2)
+                      `((vb6-font-lock-keywords
+                         vb6-font-lock-keywords-1
+                         vb6-font-lock-keywords-2)
                         nil t ((,(string-to-char "_") . "w")))))
                (t
                 (make-local-variable 'font-lock-keywords)
-                (setq font-lock-keywords visual-basic-font-lock-keywords)))
+                (setq font-lock-keywords vb6-font-lock-keywords)))
 
-         (if visual-basic-winemacs-p
+         (if vb6-winemacs-p
              (font-lock-ensure)
            (font-lock-mode 1)))))
 
@@ -609,11 +607,11 @@ Commands:
 ;; Another idea would be to make it intelligent enough to substitute
 ;; the correct end for the construct (with, select, if)
 ;; Is this what the abbrev table hook entry is for?
-(defun visual-basic-construct-keyword-abbrev-table ()
+(defun vb6-construct-keyword-abbrev-table ()
   "Construction abbreviation table from list of keywords."
-  (if visual-basic-mode-abbrev-table
+  (if vb6-mode-abbrev-table
       nil
-    (let ((words visual-basic-all-keywords)
+    (let ((words vb6-all-keywords)
           (word nil)
           (list nil))
       (while words
@@ -621,27 +619,27 @@ Commands:
               words (cdr words))
         (setq list (cons (list (downcase word) word) list)))
 
-      (define-abbrev-table 'visual-basic-mode-abbrev-table list))))
+      (define-abbrev-table 'vb6-mode-abbrev-table list))))
 
 ;; Would like to do this at compile-time.
-(visual-basic-construct-keyword-abbrev-table)
+(vb6-construct-keyword-abbrev-table)
 
 
-(defun visual-basic-upgrade-keyword-abbrev-table ()
-  "Use this in case of upgrading visual-basic-mode.el."
+(defun vb6-upgrade-keyword-abbrev-table ()
+  "Use this in case of upgrading vb6-mode.el."
   (interactive)
 
-  (let ((words visual-basic-all-keywords)
+  (let ((words vb6-all-keywords)
         (word nil)
         (list nil))
     (while words
       (setq word (car words)
             words (cdr words))
       (setq list (cons (list (downcase word) word) list)))
-    (define-abbrev-table 'visual-basic-mode-abbrev-table list)))
+    (define-abbrev-table 'vb6-mode-abbrev-table list)))
 
 
-(defun visual-basic-in-code-context-p ()
+(defun vb6-in-code-context-p ()
   "Predicate true when pointer is in code context."
   (save-match-data
     (if (fboundp 'buffer-syntactic-context) ; XEmacs function.
@@ -656,53 +654,53 @@ Commands:
         (and (null (nth 3 list))          ; inside string.
 	     (null (nth 4 list)))))))      ; inside comment
 
-(defun visual-basic-abbrev-expand-function (expand-fun)
+(defun vb6-abbrev-expand-function (expand-fun)
   "Expansion of abbreviations.  EXPAND-FUN is called at the end of this function."
   ;; Allow our abbrevs only in a code context.
   (setq local-abbrev-table
-        (if (visual-basic-in-code-context-p)
-            visual-basic-mode-abbrev-table))
+        (if (vb6-in-code-context-p)
+            vb6-mode-abbrev-table))
   (funcall expand-fun))
 
 
-(defun visual-basic-newline-and-indent (&optional count)
+(defun vb6-newline-and-indent (&optional count)
   "Insert a newline, updating indentation.  Argument COUNT is ignored."
   (interactive)
   (save-excursion
     (expand-abbrev)
-    (visual-basic-indent-line))
+    (vb6-indent-line))
   (call-interactively 'newline-and-indent))
 
-(defun visual-basic-beginning-of-defun ()
+(defun vb6-beginning-of-defun ()
   "Set the pointer at the beginning of the Sub/Function/Property within which the pointer is located."
   (interactive)
-  (re-search-backward visual-basic-defun-start-regexp))
+  (re-search-backward vb6-defun-start-regexp))
 
-(defun visual-basic-end-of-defun ()
+(defun vb6-end-of-defun ()
   "Set the pointer at the beginning of the Sub/Function/Property within which the pointer is located."
   (interactive)
-  (re-search-forward visual-basic-defun-end-regexp))
+  (re-search-forward vb6-defun-end-regexp))
 
-(defun visual-basic-mark-defun ()
+(defun vb6-mark-defun ()
   "Set the region pointer around Sub/Function/Property within which the pointer is located."
   (interactive)
   (beginning-of-line)
-  (visual-basic-end-of-defun)
+  (vb6-end-of-defun)
   (set-mark (point))
-  (visual-basic-beginning-of-defun)
-  (if visual-basic-xemacs-p
+  (vb6-beginning-of-defun)
+  (if vb6-xemacs-p
       (zmacs-activate-region)))
 
-(defun visual-basic-indent-defun ()
+(defun vb6-indent-defun ()
   "Indent the function within which the pointer is located.  This has a border effect on mark."
   ;; VB1 to Lennart: is border effect on mark an issue ?
   (interactive)
   (save-excursion
-    (visual-basic-mark-defun)
-    (call-interactively 'visual-basic-indent-region)))
+    (vb6-mark-defun)
+    (call-interactively 'vb6-indent-region)))
 
 
-(defun visual-basic-fill-long-comment ()
+(defun vb6-fill-long-comment ()
   "Fills block of comment lines around point."
   ;; Derived from code in ilisp-ext.el.
   (interactive)
@@ -716,7 +714,7 @@ Commands:
                   (match-end 0))))
 
             (while (and (not (bobp))
-                        (looking-at visual-basic-comment-regexp))
+                        (looking-at vb6-comment-regexp))
               (forward-line -1))
             (if (not (bobp)) (forward-line 1))
 
@@ -735,23 +733,23 @@ Commands:
               (fill-region-as-paragraph start (point))))))))
 
 
-(defun visual-basic-fill-or-indent ()
+(defun vb6-fill-or-indent ()
   "Fill long comment around point, if any, else indent current definition."
   (interactive)
   (cond ((save-excursion
            (beginning-of-line)
-           (looking-at visual-basic-comment-regexp))
-         (visual-basic-fill-long-comment))
+           (looking-at vb6-comment-regexp))
+         (vb6-fill-long-comment))
         (t
-         (visual-basic-indent-defun))))
+         (vb6-indent-defun))))
 
 
-(defun visual-basic-new-sub ()
+(defun vb6-new-sub ()
   "Insert template for a new subroutine.  Repeat to cycle through alternatives."
   (interactive)
   (beginning-of-line)
-  (let ((templates (cons visual-basic-blank-regexp
-                         visual-basic-defn-templates))
+  (let ((templates (cons vb6-blank-regexp
+                         vb6-defn-templates))
         (tem nil)
         (bound (point)))
     (while templates
@@ -765,13 +763,13 @@ Commands:
     (search-backward "()" bound t)))
 
 
-(defun visual-basic-untabify ()
+(defun vb6-untabify ()
   "Do not allow any tabs into the file."
-  (if (eq major-mode 'visual-basic-mode)
+  (if (eq major-mode 'vb6-mode)
       (untabify (point-min) (point-max)))
   nil)
 
-(defun visual-basic-default-tag ()
+(defun vb6-default-tag ()
   "Return default TAG at point to search by grep."
   ;; VB1 to Lennart: is border effect on match-data an issue
   (if (and (not (bobp))
@@ -785,23 +783,23 @@ Commands:
              (point))))
     (buffer-substring s e)))
 
-(defun visual-basic-grep (tag)
+(defun vb6-grep (tag)
   "Search BASIC source files in current directory for TAG."
   (interactive
-   (list (let* ((def (visual-basic-default-tag))
+   (list (let* ((def (vb6-default-tag))
                 (tag (read-string
                       (format "Grep for [%s]: " def))))
            (if (string= tag "") def tag))))
-  (grep (format "grep -n %s %s" tag visual-basic-wild-files)))
+  (grep (format "grep -n %s %s" tag vb6-wild-files)))
 
 
 ;;; IDE Connection.
 
-(defun visual-basic-buffer-project-file ()
+(defun vb6-buffer-project-file ()
   "Return a guess as to the project file associated with the current buffer."
   (car (directory-files (file-name-directory (buffer-file-name)) t "\\.vbp")))
 
-(defun visual-basic-start-ide ()
+(defun vb6-start-ide ()
   "Start Visual Basic (or your favorite IDE, (after Emacs, of course))
 on the first project file in the current directory.
 Note: it's not a good idea to leave Visual Basic running while you
@@ -809,16 +807,16 @@ are editing in Emacs, since Visual Basic has no provision for reloading
 changed files."
   (interactive)
   (let (file)
-    (cond ((null visual-basic-ide-pathname)
-           (error "No pathname set for Visual Basic.  See visual-basic-ide-pathname"))
-          ((null (setq file (visual-basic-buffer-project-file)))
+    (cond ((null vb6-ide-pathname)
+           (error "No pathname set for Visual Basic.  See vb6-ide-pathname"))
+          ((null (setq file (vb6-buffer-project-file)))
            (error "No project file found"))
           ((fboundp 'win-exec)
            (suspend-frame)
-           (win-exec visual-basic-ide-pathname 'win-show-normal file))
+           (win-exec vb6-ide-pathname 'win-show-normal file))
           ((fboundp 'start-process)
            (iconify-frame (selected-frame))
-           (start-process "*VisualBasic*" nil visual-basic-ide-pathname file))
+           (start-process "*VisualBasic*" nil vb6-ide-pathname file))
           (t
            (error "No way to spawn process!")))))
 
@@ -826,16 +824,16 @@ changed files."
 
 ;;; Indentation-related stuff.
 
-(defun visual-basic-indent-region (start end)
-  "Perform `visual-basic-indent-line' on each line in region delimited by START and END."
+(defun vb6-indent-region (start end)
+  "Perform `vb6-indent-line' on each line in region delimited by START and END."
   (interactive "r")
   (save-excursion
     (goto-char start)
     (beginning-of-line)
     (while (and (not (eobp))
                 (< (point) end))
-      (if (not (looking-at visual-basic-blank-regexp))
-          (visual-basic-indent-line))
+      (if (not (looking-at vb6-blank-regexp))
+          (vb6-indent-line))
       (forward-line 1)))
 
   (cond ((fboundp 'zmacs-deactivate-region)
@@ -845,35 +843,35 @@ changed files."
 
 
 
-(defun visual-basic-previous-line-of-code ()
+(defun vb6-previous-line-of-code ()
   "Set point on previous line of code, skipping any blank or comment lines."
   (if (not (bobp))
       (forward-line -1))        ; previous-line depends on goal column
   (while (and (not (bobp))
-              (or (looking-at visual-basic-blank-regexp)
-                  (looking-at visual-basic-comment-regexp)))
+              (or (looking-at vb6-blank-regexp)
+                  (looking-at vb6-comment-regexp)))
     (forward-line -1)))
 
-(defun visual-basic-next-line-of-code ()
+(defun vb6-next-line-of-code ()
   "Set point on next line of code, skipping any blank or comment lines."
   (if (null (eobp))
       (forward-line 1))        ; next-line depends on goal column
   (while (and (null (eobp))
-              (looking-at visual-basic-comment-regexp))
+              (looking-at vb6-comment-regexp))
     (forward-line 1)))
 
 
-(defun visual-basic-find-original-statement ()
+(defun vb6-find-original-statement ()
   "If the current line is a continuation, move back to the original stmt."
   (let ((here (point)))
-    (visual-basic-previous-line-of-code)
+    (vb6-previous-line-of-code)
     (while (and (not (bobp))
-                (looking-at visual-basic-continuation-regexp))
+                (looking-at vb6-continuation-regexp))
       (setq here (point))
-      (visual-basic-previous-line-of-code))
+      (vb6-previous-line-of-code))
     (goto-char here)))
 
-(defun visual-basic-find-predicate-matching-stmt (open-p close-p)
+(defun vb6-find-predicate-matching-stmt (open-p close-p)
   "Find opening statement statisfying OPEN-P predicate for which
 matching closing statement statisfies CLOSE-P predicate.
 
@@ -883,21 +881,21 @@ statifying CLOSE-P was visited before during this search."
   ;; Searching backwards
   (let ((level 0))
     (while (and (>= level 0) (not (bobp)))
-      (visual-basic-previous-line-of-code)
-      (visual-basic-find-original-statement)
+      (vb6-previous-line-of-code)
+      (vb6-find-original-statement)
       (cond ((funcall close-p)
              (setq level (+ level 1)))
             ((funcall open-p)
              (setq level (- level 1)))))))
 
-(defun visual-basic-find-matching-stmt (open-regexp close-regexp)
-  "Same as function `visual-basic-find-predicate-matching-stmt' except that regexps OPEN-REGEXP CLOSE-REGEXP are supplied instead of predicate, equivalent predicate being to be looking at those regexps."
-  (visual-basic-find-predicate-matching-stmt
+(defun vb6-find-matching-stmt (open-regexp close-regexp)
+  "Same as function `vb6-find-predicate-matching-stmt' except that regexps OPEN-REGEXP CLOSE-REGEXP are supplied instead of predicate, equivalent predicate being to be looking at those regexps."
+  (vb6-find-predicate-matching-stmt
    (lambda () (looking-at open-regexp))
    (lambda () (looking-at close-regexp))))
 
-(defun visual-basic-at-line-continuation ()
-  (and  (looking-at  visual-basic-looked-at-continuation-regexp)
+(defun vb6-at-line-continuation ()
+  (and  (looking-at  vb6-looked-at-continuation-regexp)
 	(save-excursion
 	  (or (bolp)
 	      (progn (backward-char)
@@ -907,11 +905,11 @@ statifying CLOSE-P was visited before during this search."
 			   (re-search-forward "[^[:digit:]]" nil t)
 			   (looking-at "[^[:alnum:]]"))))))))
 
-(defun visual-basic-get-complete-tail-of-line ()
+(defun vb6-get-complete-tail-of-line ()
   "Return the tail of the current statement line, starting at
 point and going up to end of statement line. If you want the
 complete statement line, you have to call functions
-`visual-basic-find-original-statement' and then
+`vb6-find-original-statement' and then
 `beginning-of-line' before"
   (let* ((start-point (point))
 	 complete-line
@@ -921,7 +919,7 @@ complete statement line, you have to call functions
       (end-of-line)
       (setq line-end (point))
       (if (search-backward "_" line-beg t)
-	  (if (visual-basic-at-line-continuation)
+	  (if (vb6-at-line-continuation)
 	      ;; folded line
 	      (progn
 		(setq line-end (1- (point))
@@ -941,17 +939,17 @@ complete statement line, you have to call functions
 		    complete-line))))
     (mapconcat 'identity (nreverse complete-line) " ")))
 
-(defun visual-basic-if-not-on-single-line ()
+(defun vb6-if-not-on-single-line ()
   "Return non-`nil' when the If statement is not on a single statement
 line, i.e. requires a matching End if. Note that a statement line may
 be folded over several code lines."
-  (if (looking-at visual-basic-if-regexp)
+  (if (looking-at vb6-if-regexp)
       (save-excursion
 	(beginning-of-line)
 	(let (p1
 	      p2
 	      ;; 1st reconstruct complete line
-	      (complete-line (visual-basic-get-complete-tail-of-line)) )
+	      (complete-line (vb6-get-complete-tail-of-line)) )
 
 	  ;; now complete line has been reconstructed, drop confusing elements
 
@@ -971,98 +969,98 @@ be folded over several code lines."
     ;; else, not a basic if
     nil))
 
-(defun visual-basic-find-matching-if ()
+(defun vb6-find-matching-if ()
   "Set pointer on the line with If stating the If ... Then ... [Else/Elseif ...] ... End If block containing pointer."
-  (visual-basic-find-predicate-matching-stmt 'visual-basic-if-not-on-single-line
-                                             (lambda () (looking-at visual-basic-endif-regexp))))
+  (vb6-find-predicate-matching-stmt 'vb6-if-not-on-single-line
+                                    (lambda () (looking-at vb6-endif-regexp))))
 
-(defun visual-basic-find-matching-select ()
+(defun vb6-find-matching-select ()
   "Set pointer on the line with Select Case stating the Select Case ... End Select block containing pointer."
-  (visual-basic-find-matching-stmt visual-basic-select-regexp
-                                   visual-basic-select-end-regexp))
+  (vb6-find-matching-stmt vb6-select-regexp
+                          vb6-select-end-regexp))
 
-(defun visual-basic-find-matching-for ()
+(defun vb6-find-matching-for ()
   "Set pointer on the line with For stating the `For ... Next' block containing pointer."
-  (visual-basic-find-matching-stmt visual-basic-for-regexp
-                                   visual-basic-next-regexp))
+  (vb6-find-matching-stmt vb6-for-regexp
+                          vb6-next-regexp))
 
-(defun visual-basic-find-matching-do ()
+(defun vb6-find-matching-do ()
   "Set pointer on the line with Do stating the `Do ... Loop' block containing pointer."
-  (visual-basic-find-matching-stmt visual-basic-do-regexp
-                                   visual-basic-loop-regexp))
+  (vb6-find-matching-stmt vb6-do-regexp
+                          vb6-loop-regexp))
 
-(defun visual-basic-find-matching-while ()
+(defun vb6-find-matching-while ()
   "Set pointer on the line with While stating the `While ... Wend' block containing pointer."
-  (visual-basic-find-matching-stmt visual-basic-while-regexp
-                                   visual-basic-wend-regexp))
+  (vb6-find-matching-stmt vb6-while-regexp
+                          vb6-wend-regexp))
 
-(defun visual-basic-find-matching-with ()
+(defun vb6-find-matching-with ()
   "Set pointer on the line with With stating the `With ... End with' block containing pointer."
-  (visual-basic-find-matching-stmt visual-basic-with-regexp
-                                   visual-basic-end-with-regexp))
+  (vb6-find-matching-stmt vb6-with-regexp
+                          vb6-end-with-regexp))
 
 ;;; If this fails it must return the indent of the line preceding the
 ;;; end not the first line because end without matching begin is a
 ;;; normal simple statement
-(defun visual-basic-find-matching-begin ()
+(defun vb6-find-matching-begin ()
   "Set pointer on the line with Begin stating the `Begin ... End' block containing pointer."
   (let ((original-point (point)))
-    (visual-basic-find-matching-stmt visual-basic-begin-regexp
-                                     visual-basic-end-begin-regexp)
+    (vb6-find-matching-stmt vb6-begin-regexp
+                            vb6-end-begin-regexp)
     (if (bobp) ;failed to find a matching begin so assume that it is
                                         ;an end statement instead and use the indent of the
                                         ;preceding line.
         (progn (goto-char original-point)
-               (visual-basic-previous-line-of-code)))))
+               (vb6-previous-line-of-code)))))
 
-(defun visual-basic--make-keyword-re (keyword)
+(defun vb6--make-keyword-re (keyword)
   "Convert a KEYWORD to the regexp that makes first letter case
   insensitive. For instance if KEYWORD is \"Class\", then
   returned value is \"[Cc]lass\"."
   (format "[%c%c]%s" (aref keyword 0) (logxor (aref keyword 0) 32) (substring keyword 1)))
 
-(defun visual-basic-calculate-indent ()
+(defun vb6-calculate-indent ()
   "Return indent count for the line of code containing pointer."
   (let ((original-point (point)))
     (save-excursion
       (beginning-of-line)
       ;; Some cases depend only on where we are now.
-      (cond ((looking-at visual-basic-label-regexp) 0)
+      (cond ((looking-at vb6-label-regexp) 0)
 
-	    ((looking-at visual-basic-defun-end-regexp)
-	     (let* ((keyword-re-list (mapcar 'visual-basic--make-keyword-re (split-string (match-string-no-properties 1))))
-		    (open-re (format visual-basic-defun-start-regexp-formatter (mapconcat 'identity keyword-re-list " +")))
-		    (close-re (format visual-basic-defun-end-regexp-formatter (car keyword-re-list))))
-	       (visual-basic-find-matching-stmt open-re close-re))
+	    ((looking-at vb6-defun-end-regexp)
+	     (let* ((keyword-re-list (mapcar 'vb6--make-keyword-re (split-string (match-string-no-properties 1))))
+		    (open-re (format vb6-defun-start-regexp-formatter (mapconcat 'identity keyword-re-list " +")))
+		    (close-re (format vb6-defun-end-regexp-formatter (car keyword-re-list))))
+	       (vb6-find-matching-stmt open-re close-re))
 	     (current-indentation))
 	    
-	    ((looking-at visual-basic-defun-start-regexp)
+	    ((looking-at vb6-defun-start-regexp)
 	     (if (bobp)
 		 0
 	       ;; find the first opening defun if any
 	       (let ((p original-point) open-keyword keyword-re open-re close-re close-keyword p-open p-close indentation)
 		 (while
-		     (if (re-search-backward visual-basic-defun-start-regexp nil t)
+		     (if (re-search-backward vb6-defun-start-regexp nil t)
 			 (progn
 			   (setq p-open (point)
 				 open-keyword (match-string-no-properties 2))
 			   (goto-char p)
-			   (if (and (re-search-backward visual-basic-defun-end-regexp nil t)
+			   (if (and (re-search-backward vb6-defun-end-regexp nil t)
 				    (progn
 				      (setq p-close (point)
 					    close-keyword  (match-string-no-properties 1))
 				      (> p-close p-open)))
 			       (progn
-				 (setq keyword-re  (visual-basic--make-keyword-re close-keyword)
-				       open-re (format visual-basic-defun-start-regexp-formatter
+				 (setq keyword-re  (vb6--make-keyword-re close-keyword)
+				       open-re (format vb6-defun-start-regexp-formatter
 						       (if (string= (downcase close-keyword) "property")
 							   (concat keyword-re " +[SsGgLl]et")
 							 keyword-re))
-				       close-re (format visual-basic-defun-end-regexp-formatter keyword-re))
-				 (visual-basic-find-matching-stmt open-re close-re)
+				       close-re (format vb6-defun-end-regexp-formatter keyword-re))
+				 (vb6-find-matching-stmt open-re close-re)
 				 (setq p (point)))
 			     (goto-char p-open)
-			     (setq indentation (+ (current-indentation) visual-basic-mode-indent))
+			     (setq indentation (+ (current-indentation) vb6-mode-indent))
 			     nil; stop iterating
 			     ))
 		       (setq indentation 0)
@@ -1071,55 +1069,55 @@ be folded over several code lines."
 		 indentation)))
 
             ;; The outdenting stmts, which simply match their original.
-            ((or (looking-at visual-basic-else-regexp)
-                 (looking-at visual-basic-endif-regexp))
-             (visual-basic-find-matching-if)
+            ((or (looking-at vb6-else-regexp)
+                 (looking-at vb6-endif-regexp))
+             (vb6-find-matching-if)
              (current-indentation))
 
             ;; All the other matching pairs act alike.
-            ((looking-at visual-basic-next-regexp) ; for/next
-             (visual-basic-find-matching-for)
+            ((looking-at vb6-next-regexp) ; for/next
+             (vb6-find-matching-for)
              (current-indentation))
 
-            ((looking-at visual-basic-loop-regexp) ; do/loop
-             (visual-basic-find-matching-do)
+            ((looking-at vb6-loop-regexp) ; do/loop
+             (vb6-find-matching-do)
              (current-indentation))
 
-            ((looking-at visual-basic-wend-regexp) ; while/wend
-             (visual-basic-find-matching-while)
+            ((looking-at vb6-wend-regexp) ; while/wend
+             (vb6-find-matching-while)
              (current-indentation))
 
-            ((looking-at visual-basic-end-with-regexp) ; with/end with
-             (visual-basic-find-matching-with)
+            ((looking-at vb6-end-with-regexp) ; with/end with
+             (vb6-find-matching-with)
              (current-indentation))
 
-            ((looking-at visual-basic-select-end-regexp) ; select case/end select
-             (visual-basic-find-matching-select)
+            ((looking-at vb6-select-end-regexp) ; select case/end select
+             (vb6-find-matching-select)
              (current-indentation))
 
             ;; A case of a select is somewhat special.
-            ((looking-at visual-basic-case-regexp)
-             (visual-basic-find-matching-select)
-             (+ (current-indentation) visual-basic-mode-indent))
+            ((looking-at vb6-case-regexp)
+             (vb6-find-matching-select)
+             (+ (current-indentation) vb6-mode-indent))
 
             ;; Added KJW: Make sure that this comes after the cases
             ;; for if..endif, end select because end-regexp will also
             ;; match "end select" etc.
-            ((looking-at visual-basic-end-begin-regexp) ; begin/end
-             (visual-basic-find-matching-begin)
+            ((looking-at vb6-end-begin-regexp) ; begin/end
+             (vb6-find-matching-begin)
              (current-indentation))
 
             (t
              ;; Other cases which depend on the previous line.
-             (visual-basic-previous-line-of-code)
+             (vb6-previous-line-of-code)
 
              ;; Skip over label lines, which always have 0 indent.
-             (while (looking-at visual-basic-label-regexp)
-               (visual-basic-previous-line-of-code))
+             (while (looking-at vb6-label-regexp)
+               (vb6-previous-line-of-code))
 
              (cond
-              ((looking-at visual-basic-continuation-regexp)
-               (visual-basic-find-original-statement)
+              ((looking-at vb6-continuation-regexp)
+               (vb6-find-original-statement)
                ;; Indent continuation line under matching open paren,
                ;; or else one word in.
                (let* ((orig-stmt (point))
@@ -1143,35 +1141,35 @@ be folded over several code lines."
                           (forward-char 1))
                         (current-column)))))
               (t
-               (visual-basic-find-original-statement)
+               (vb6-find-original-statement)
 
                (let ((indent (current-indentation)))
                  ;; All the various +indent regexps.
-                 (cond ((looking-at visual-basic-defun-start-regexp)
-                        (+ indent visual-basic-mode-indent))
+                 (cond ((looking-at vb6-defun-start-regexp)
+                        (+ indent vb6-mode-indent))
 
-                       ((or (visual-basic-if-not-on-single-line)
-                            (and (looking-at visual-basic-else-regexp)
-                                 (not (and visual-basic-allow-single-line-if
-                                           (looking-at visual-basic-ifthen-regexp)))))
-                        (+ indent visual-basic-mode-indent))
+                       ((or (vb6-if-not-on-single-line)
+                            (and (looking-at vb6-else-regexp)
+                                 (not (and vb6-allow-single-line-if
+                                           (looking-at vb6-ifthen-regexp)))))
+                        (+ indent vb6-mode-indent))
 
-                       ((or (looking-at visual-basic-select-regexp)
-                            (looking-at visual-basic-case-regexp))
-                        (+ indent visual-basic-mode-indent))
+                       ((or (looking-at vb6-select-regexp)
+                            (looking-at vb6-case-regexp))
+                        (+ indent vb6-mode-indent))
 
-                       ((or (looking-at visual-basic-do-regexp)
-                            (looking-at visual-basic-for-regexp)
-                            (looking-at visual-basic-while-regexp)
-                            (looking-at visual-basic-with-regexp)
-                            (looking-at visual-basic-begin-regexp))
-                        (+ indent visual-basic-mode-indent))
+                       ((or (looking-at vb6-do-regexp)
+                            (looking-at vb6-for-regexp)
+                            (looking-at vb6-while-regexp)
+                            (looking-at vb6-with-regexp)
+                            (looking-at vb6-begin-regexp))
+                        (+ indent vb6-mode-indent))
 
                        (t
                         ;; By default, just copy indent from prev line.
                         indent))))))))))
 
-(defun visual-basic-indent-to-column (col)
+(defun vb6-indent-to-column (col)
   "Indent line of code containing pointer up to column COL."
   (let* ((bol (save-excursion
                 (beginning-of-line)
@@ -1181,7 +1179,7 @@ be folded over several code lines."
          (blank-line-p
           (save-excursion
             (beginning-of-line)
-            (looking-at visual-basic-blank-regexp))))
+            (looking-at vb6-blank-regexp))))
 
     (cond ((/= col (current-indentation))
            (save-excursion
@@ -1197,13 +1195,13 @@ be folded over several code lines."
            (back-to-indentation)))))
 
 
-(defun visual-basic-indent-line ()
+(defun vb6-indent-line ()
   "Indent current line for BASIC."
   (interactive)
-  (visual-basic-indent-to-column (visual-basic-calculate-indent)))
+  (vb6-indent-to-column (vb6-calculate-indent)))
 
 
-(defun visual-basic-split-line ()
+(defun vb6-split-line ()
   "Split line at point, adding continuation character or continuing a comment.
 In Abbrev mode, any abbrev before point will be expanded."
   (interactive)
@@ -1219,9 +1217,9 @@ In Abbrev mode, any abbrev before point will be expanded."
           (t (just-one-space)           ; leading space on next line
                                         ; doesn't count, sigh
              (insert "_")
-             (visual-basic-newline-and-indent)))))
+             (vb6-newline-and-indent)))))
 
-(defun visual-basic-detect-idom ()
+(defun vb6-detect-idom ()
   "Detects whether this is a VBA or VBS script. Returns symbol
 `vba' if it is VBA, `nil' otherwise."
   (let (ret
@@ -1238,7 +1236,7 @@ In Abbrev mode, any abbrev before point will be expanded."
         ))
     ret))
 
-(defun visual-basic-close-block ()
+(defun vb6-close-block ()
   "Insert `End If' is current block is a `If Then ...', `End
 With' if the block is a `With ...', etc..."
   (interactive)
@@ -1247,54 +1245,54 @@ With' if the block is a `With ...', etc..."
       (save-match-data
 	(while
 	    (unless  (bobp)
-	      (visual-basic-previous-line-of-code)
-	      (visual-basic-find-original-statement)
+	      (vb6-previous-line-of-code)
+	      (vb6-find-original-statement)
 	      (cond
 	       ;; Cases where the current statement is a start-of-smthing statement
-	       ((looking-at visual-basic-defun-start-regexp)
+	       ((looking-at vb6-defun-start-regexp)
 		(let ((smt (match-string 2)))
 		  (when (string-match "\\`Prop" smt)
 		    (setq smt "Property"))
 		  (setq end-statement (concat "End " smt)
 			end-indent (current-indentation)))
 		nil)
-	       ((looking-at visual-basic-select-regexp)
+	       ((looking-at vb6-select-regexp)
 		(setq  end-statement "End Select"
 		       end-indent (current-indentation))
 		nil)
-	       ((looking-at visual-basic-with-regexp)
+	       ((looking-at vb6-with-regexp)
 		(setq  end-statement "End With"
 		       end-indent (current-indentation))
 		nil)
-	       ((looking-at visual-basic-case-regexp)
+	       ((looking-at vb6-case-regexp)
 		(setq  end-statement  "End Select"
-		       end-indent (max 0 (- (current-indentation) visual-basic-mode-indent)))
+		       end-indent (max 0 (- (current-indentation) vb6-mode-indent)))
 		nil)
-	       ((looking-at visual-basic-begin-regexp)
+	       ((looking-at vb6-begin-regexp)
 		(setq  end-statement "End"
 		       end-indent (current-indentation))
 		nil)
-	       ((or (visual-basic-if-not-on-single-line)
-		    (looking-at visual-basic-else-regexp))
+	       ((or (vb6-if-not-on-single-line)
+		    (looking-at vb6-else-regexp))
 		(setq  end-statement "End If"
 		       end-indent (current-indentation))
 		nil)
 
-	       ((looking-at visual-basic-do-regexp)
+	       ((looking-at vb6-do-regexp)
 		(setq  end-statement "Loop"
 		       end-indent (current-indentation))
 		nil)
 
-	       ((looking-at visual-basic-while-regexp)
+	       ((looking-at vb6-while-regexp)
 		(setq  end-statement "Wend"
 		       end-indent (current-indentation))
 		nil)
 
-	       ((looking-at visual-basic-for-regexp)
+	       ((looking-at vb6-for-regexp)
 		(goto-char (match-end 0))
 		(setq  end-statement "Next"
 		       end-indent (current-indentation))
-		(let ((vb-idom (visual-basic-detect-idom)))
+		(let ((vb-idom (vb6-detect-idom)))
 		  (cond
 		   ;; for VBA add the variable name after Next.
 		   ((eq vb-idom 'vba)
@@ -1302,24 +1300,24 @@ With' if the block is a `With ...', etc..."
 		      (setq end-statement (concat end-statement " " (match-string 2)))))))
 		nil)
 	       ;; Cases where the current statement is an end-of-smthing statement
-	       ((or (looking-at visual-basic-else-regexp)
-		    (looking-at visual-basic-endif-regexp))
-		(visual-basic-find-matching-if)
+	       ((or (looking-at vb6-else-regexp)
+		    (looking-at vb6-endif-regexp))
+		(vb6-find-matching-if)
 		t)
-	       ((looking-at visual-basic-next-regexp) ; for/next
-		(visual-basic-find-matching-for)
+	       ((looking-at vb6-next-regexp) ; for/next
+		(vb6-find-matching-for)
 		t)
-	       ((looking-at visual-basic-loop-regexp) ; do/loop
-		(visual-basic-find-matching-do)
+	       ((looking-at vb6-loop-regexp) ; do/loop
+		(vb6-find-matching-do)
 		t)
-	       ((looking-at visual-basic-wend-regexp) ; while/wend
-		(visual-basic-find-matching-while)
+	       ((looking-at vb6-wend-regexp) ; while/wend
+		(vb6-find-matching-while)
 		t)
-	       ((looking-at visual-basic-end-with-regexp) ; with/end with
-		(visual-basic-find-matching-with)
+	       ((looking-at vb6-end-with-regexp) ; with/end with
+		(vb6-find-matching-with)
 		t)
-	       ((looking-at visual-basic-select-end-regexp) ; select case/end select
-		(visual-basic-find-matching-select)
+	       ((looking-at vb6-select-end-regexp) ; select case/end select
+		(vb6-find-matching-select)
 		t)
 
 
@@ -1327,9 +1325,9 @@ With' if the block is a `With ...', etc..."
 	       (t t))))))
     (when end-statement
       (insert end-statement)
-      (visual-basic-indent-to-column end-indent))))
+      (vb6-indent-to-column end-indent))))
 
-(defun visual-basic-insert-item ()
+(defun vb6-insert-item ()
   "Insert a new item in a block.
 
 This function is under developement, and for the time being only
@@ -1411,13 +1409,13 @@ Interting an item means:
 	(beginning-of-line)
 	(while
 	    (progn
-	      (visual-basic-find-original-statement)
+	      (vb6-find-original-statement)
 	      (cond
 	       ;; dim case
 	       ;;--------------------------------------------------------------
 	       ((and (null previous-line-of-code)
-		     (looking-at visual-basic-dim-regexp)
-		     (null (save-match-data (looking-at visual-basic-defun-start-regexp))))
+		     (looking-at vb6-dim-regexp)
+		     (null (save-match-data (looking-at vb6-defun-start-regexp))))
 		(setq prefix (buffer-substring-no-properties
 			      (point)
 			      (goto-char (setq split-point (match-end 0)
@@ -1450,13 +1448,13 @@ Interting an item means:
                                      t))
 				 ;; continuation
 				 (and loop-again
-				      (visual-basic-at-line-continuation) ))
+				      (vb6-at-line-continuation) ))
                               (goto-char (setq tentative-split-point (match-end 0))))
 			    (when loop-again
 			      (when (looking-at "As\\s-+\\(?:\\sw\\|\\s_\\)+\\s-*")
 				(setq item-case ':dim-split-after)
 				(goto-char (setq tentative-split-point (match-end 0))))
-			      (when (visual-basic-at-line-continuation)
+			      (when (vb6-at-line-continuation)
 				(beginning-of-line 2))
 			      (if (looking-at ",")
 				  (goto-char (setq split-point (match-end 0)))
@@ -1482,14 +1480,14 @@ Interting an item means:
 
 	       ;;  case of Case (in Select ... End Select)
 	       ;;----------------------------------------------------------------------
-	       ((looking-at visual-basic-case-regexp)
-		(if (looking-at visual-basic-case-else-regexp)
+	       ((looking-at vb6-case-regexp)
+		(if (looking-at vb6-case-else-regexp)
 		    ;; if within a Case Else statement, then insert
 		    ;; a Case just before with same indentation
 		    (let ((indent (current-indentation)))
 		      (beginning-of-line)
 		      (insert "Case ")
-		      (visual-basic-indent-to-column indent)
+		      (vb6-indent-to-column indent)
 		      (setq item-case ':select-with-else
 			    split-point (point))
 		      (insert ?\n))
@@ -1498,7 +1496,7 @@ Interting an item means:
 		)
 
 	       ;; next
-	       ((looking-at visual-basic-next-regexp)
+	       ((looking-at vb6-next-regexp)
 		(push (list 'next) block-stack))
 	       ;; default
 	       ;;--------------------------------------------------------------
@@ -1506,7 +1504,7 @@ Interting an item means:
 		      (setq item-case 'not-itemizable)))
 	       )
 	      (when (null item-case)
-		(visual-basic-previous-line-of-code)
+		(vb6-previous-line-of-code)
 		(setq previous-line-of-code t))
 	      (null item-case)))))
     (case item-case
@@ -1519,23 +1517,23 @@ Interting an item means:
        (let ((select-case-depth 0))
 	 (while
 	     (progn
-	       (visual-basic-next-line-of-code)
+	       (vb6-next-line-of-code)
                (cond
 		;; case was found, insert case and exit loop
 		((and (= 0 select-case-depth)
-		      (looking-at visual-basic-case-regexp))
+		      (looking-at vb6-case-regexp))
 		 (let ((indent (current-indentation)))
 		   (beginning-of-line)
 		   (insert "Case ")
-		   (visual-basic-indent-to-column indent)
+		   (vb6-indent-to-column indent)
 		   (save-excursion (insert ?\n))
 		   nil))
-		((looking-at visual-basic-select-regexp)
+		((looking-at vb6-select-regexp)
 		 (setq select-case-depth (1+ select-case-depth))
 		 (if
-		     (re-search-forward (concat visual-basic-select-regexp
+		     (re-search-forward (concat vb6-select-regexp
 						"\\|"
-						visual-basic-select-end-regexp)
+						vb6-select-end-regexp)
 					nil nil)
 		     (progn
 		       (beginning-of-line)
@@ -1544,14 +1542,14 @@ Interting an item means:
 		   (let ((l (line-number-at-pos)))
 		     (goto-char cur-point)
 		     (error "Select Case without matching end at line %d" l))))
-		((looking-at visual-basic-select-end-regexp)
+		((looking-at vb6-select-end-regexp)
 		 (setq select-case-depth (1- select-case-depth))
 		 (if (= select-case-depth -1)
 		     (let ((indent (current-indentation)))
 		       (insert  "Case ")
 		       (save-excursion (insert ?\n ))
-		       (visual-basic-indent-to-column
-		        (+ indent visual-basic-mode-indent))
+		       (vb6-indent-to-column
+		        (+ indent vb6-mode-indent))
 		       nil;; break loop
                        )
 		   t; loop again
@@ -1563,7 +1561,7 @@ Interting an item means:
 		(t t)))))) ; end of select-case-without-else
       )))
 
-(defun visual-basic-propertize-attribute ()
+(defun vb6-propertize-attribute ()
   "Insert Let/Set and Get property functions suitable to
 manipulate some private attribute, the cursor is assumed to be on
 the concerned attribute declartion"
@@ -1577,10 +1575,10 @@ the concerned attribute declartion"
 	    (progn
 	      (setq variable (match-string 1)
 		    type (match-string 2)
-		    lettable (string-match visual-basic-lettable-type-regexp type))
+		    lettable (string-match vb6-lettable-type-regexp type))
 	      (if (string-match (concat "\\`"
-					visual-basic-variable-scope-prefix-re
-					"\\(" visual-basic-variable-type-prefix-re "\\)")
+					vb6-variable-scope-prefix-re
+					"\\(" vb6-variable-type-prefix-re "\\)")
 				variable)
 		  (setq 
 		   type-prefix (match-string 1 variable)
@@ -1601,7 +1599,7 @@ the concerned attribute declartion"
 ;;; Some experimental functions
 
 ;;; Load associated files listed in the file local variables block
-(defun visual-basic-load-associated-files ()
+(defun vb6-load-associated-files ()
   "Load files that are useful to have around when editing the
 source of the file that has just been loaded.  The file must have
 a local variable that lists the files to be loaded.  If the file
@@ -1610,18 +1608,18 @@ current buffer.  If the file is already loaded nothing happens,
 this prevents circular references causing trouble.  After an
 associated file is loaded its associated files list will be
 processed."
-  (if (boundp 'visual-basic-associated-files)
-      (let ((files visual-basic-associated-files)
+  (if (boundp 'vb6-associated-files)
+      (let ((files vb6-associated-files)
             (file nil))
         (while files
           (setq file (car files)
                 files (cdr files))
           (message "Load associated file: %s" file)
-          (visual-basic-load-file-ifnotloaded file default-directory)))))
+          (vb6-load-file-ifnotloaded file default-directory)))))
 
 
 
-(defun visual-basic-load-file-ifnotloaded (file default-directory)
+(defun vb6-load-file-ifnotloaded (file default-directory)
   "Load file if not already loaded.
 If FILE is relative then DEFAULT-DIRECTORY provides the path."
   (let((file-absolute (expand-file-name file default-directory)))
@@ -1629,7 +1627,7 @@ If FILE is relative then DEFAULT-DIRECTORY provides the path."
         ()
       (find-file-noselect file-absolute ))))
 
-(defun visual-basic-check-style ()
+(defun vb6-check-style ()
   "Check coding style of currently open buffer, and make
 corrections under the control of user.
 
@@ -1644,20 +1642,20 @@ This function is under construction"
 	()
 	(save-match-data
 	  (and
-	   (visual-basic-in-code-context-p)
+	   (vb6-in-code-context-p)
 	   (null (looking-back "\\([0-9]\\.\\|[0-9]\\)[eE]")))))
        (check-plus-or-minus-not-followed-by-space-p
 	()
 	(save-match-data
 	  (and
-	   (visual-basic-in-code-context-p)
+	   (vb6-in-code-context-p)
 	   (null  (looking-at "\\(\\sw\\|\\s_\\|\\s\(\\|[.0-9]\\)"))
 	   (null (looking-back "\\([0-9]\\.\\|[0-9]\\)[eE]\\|,\\s-*\\(\\|_\\s-*\\)\\|:=\\s-*")))));
        (check-comparison-sign-not-followed-by-space-p
 	()
 	(save-match-data
 	  (and
-	   (visual-basic-in-code-context-p)
+	   (vb6-in-code-context-p)
 	   (let ((next-char (match-string 2))
 		 (str--1 (or (= (match-beginning 1) (point-min))
 			     (buffer-substring-no-properties (1- (match-beginning 1))
@@ -1682,7 +1680,7 @@ This function is under construction"
 	()
 	(save-match-data
 	  (and
-	   (visual-basic-in-code-context-p)
+	   (vb6-in-code-context-p)
 	   (or
 	    (looking-at "\\s-*\\(\\|_\n\\s-*\\)\"")
 	    (looking-back "\"\\(\\|\\s-*_\\s-*\n\\)\\s-*\\+")))));
@@ -1709,13 +1707,13 @@ This function is under construction"
 	       "Operator not preceded by space"
 	       match-end 1
 	       insert-space-at-point
-	       visual-basic-in-code-context-p
+	       vb6-in-code-context-p
 	       0 ]
 	     [ "[/\\*&]\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
 	       "Operator not followed by space"
 	       match-beginning 1
 	       insert-space-at-point
-	       visual-basic-in-code-context-p
+	       vb6-in-code-context-p
 	       0 ]
 	     [ "[-+]\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
 	       "Plus or minus not followed by space"
@@ -1727,7 +1725,7 @@ This function is under construction"
 	       "Comparison sign not preceded by space"
 	       match-end 1
 	       insert-space-at-point
-	       visual-basic-in-code-context-p
+	       vb6-in-code-context-p
 	       0 ]
 	     [ "\\(=\\|<\\|>\\)\\(\\s\(\\|\\sw\\|\\s_\\|\\s.\\)"
 	       "Comparison sign not followed by space"
@@ -1739,7 +1737,7 @@ This function is under construction"
 	       "Comma not followed by space"
 	       match-beginning 1
 	       insert-space-at-point
-	       visual-basic-in-code-context-p
+	       vb6-in-code-context-p
 	       0 ]
 	     [ "\\+"
 	       "String should be concatenated with & rather than with +"
@@ -1755,7 +1753,7 @@ This function is under construction"
 	    (overlay-put hl-style-error 'window (selected-window))
 	    (dolist (x (buffer-list))
 	      (if (and (with-current-buffer x
-			 (derived-mode-p 'visual-basic-mode))
+			 (derived-mode-p 'vb6-mode))
 		       (null (eq x (current-buffer))))
 		  (push x vb-other-buffers-list)))
 	    (save-excursion
@@ -1787,7 +1785,7 @@ This function is under construction"
 					(match-beginning 0) 
 					(match-end 0)
 					(aref se 1)
-					(and (> (aref se 6) visual-basic-auto-check-style-level)
+					(and (> (aref se 6) vb6-auto-check-style-level)
 					     (aref se 4)))
 				  next-se-list))))
 		      (when next-se-list
@@ -1806,6 +1804,6 @@ This function is under construction"
       (delete-overlay hl-style-error)))
   (message "Done Visual Basic style check"))
 
-(provide 'visual-basic-mode)
+(provide 'vb6-mode)
 
-;;; visual-basic-mode.el ends here
+;;; vb6-mode.el ends here
